@@ -118,6 +118,23 @@ try:
 
     # Mtime membuat cache berubah jika file Excel diganti
     df = load_data(
+    st.subheader("Diagnostik Data Dashboard")
+
+st.write("Jumlah baris:", len(df))
+st.write("Jumlah transaksi unik:", df["ID TRANSAKSI"].nunique())
+st.write("Jumlah produk unik:", df["ITEM"].nunique())
+st.write("Jumlah TOTAL = 0:", (df["TOTAL"] == 0).sum())
+
+daftar_item = sorted(
+    df["ITEM"].dropna().astype(str).str.strip().unique()
+)
+
+st.write("Jumlah item setelah pembersihan:", len(daftar_item))
+
+st.dataframe(
+    pd.DataFrame({"DAFTAR ITEM": daftar_item}),
+    use_container_width=True
+)
         str(FILE_EXCEL),
         FILE_EXCEL.stat().st_mtime
     )
