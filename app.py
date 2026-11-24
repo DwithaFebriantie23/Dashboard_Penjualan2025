@@ -22,10 +22,8 @@ FILE_EXCEL = BASE_DIR / "Penjualan2025.xlsx"
 
 # =========================================================
 # 2. MEMBACA DAN MEMBERSIHKAN DATA
-#    Mengikuti alur preprocessing pada Google Colab:
-#    1) TOTAL diubah menjadi numerik
-#    2) Baris TOTAL = 0 dikeluarkan
-#    3) ID TRANSAKSI dan ITEM dibersihkan spasinya
+#    Menyesuaikan alur preprocessing pada Google Colab:
+#    Mengeluarkan baris TOTAL == 0
 # =========================================================
 
 @st.cache_data
@@ -52,40 +50,14 @@ def load_data(file_path, file_mtime):
             + ", ".join(kolom_tidak_ada)
         )
 
-    # Ubah kolom numerik terlebih dahulu
     for kolom in ["QTY", "HARGA", "TOTAL"]:
         df[kolom] = pd.to_numeric(
             df[kolom],
             errors="coerce"
         )
 
-    # Mengeluarkan baris TOTAL = 0 atau TOTAL kosong
-    df = df[
-        df["TOTAL"].notna() &
-        (df["TOTAL"] != 0)
-    ].copy()
-
-    # Bersihkan spasi pada ID transaksi dan ITEM
-    # tanpa mengubah kode/identitas asli produk
-    df["ID TRANSAKSI"] = (
-        df["ID TRANSAKSI"]
-        .astype(str)
-        .str.strip()
-    )
-
-    df["ITEM"] = (
-        df["ITEM"]
-        .astype(str)
-        .str.strip()
-    )
-
-    # Hilangkan nilai kosong yang mungkin berubah menjadi teks
-    df = df[
-        df["ID TRANSAKSI"].ne("") &
-        df["ID TRANSAKSI"].ne("nan") &
-        df["ITEM"].ne("") &
-        df["ITEM"].ne("nan")
-    ].copy()
+    # Sesuai Colab: mengeluarkan baris TOTAL == 0
+    df = df[df["TOTAL"] != 0].copy()
 
     # Normalisasi nama pelanggan untuk tampilan dashboard
     df["CUSTOMER"] = (
@@ -116,25 +88,7 @@ try:
         )
         st.stop()
 
-    # Mtime membuat cache berubah jika file Excel diganti
     df = load_data(
-    st.subheader("Diagnostik Data Dashboard")
-
-st.write("Jumlah baris:", len(df))
-st.write("Jumlah transaksi unik:", df["ID TRANSAKSI"].nunique())
-st.write("Jumlah produk unik:", df["ITEM"].nunique())
-st.write("Jumlah TOTAL = 0:", (df["TOTAL"] == 0).sum())
-
-daftar_item = sorted(
-    df["ITEM"].dropna().astype(str).str.strip().unique()
-)
-
-st.write("Jumlah item setelah pembersihan:", len(daftar_item))
-
-st.dataframe(
-    pd.DataFrame({"DAFTAR ITEM": daftar_item}),
-    use_container_width=True
-)
         str(FILE_EXCEL),
         FILE_EXCEL.stat().st_mtime
     )
@@ -175,7 +129,6 @@ total_penjualan = df["TOTAL"].sum()
 
 # =========================================================
 # 5. DATA HASIL PENELITIAN APRIORI
-#    Nilai mengikuti hasil pengujian yang telah disampaikan.
 # =========================================================
 
 DATA_PENGUJIAN = pd.DataFrame({
@@ -213,10 +166,6 @@ DATA_KANDIDAT = pd.DataFrame({
     "Jumlah Pelanggan": [2, 3, 1, 2, 1]
 })
 
-# Catatan:
-# Tabel ini merupakan ringkasan contoh itemsets yang ditampilkan
-# pada dashboard. Jika ingin menampilkan seluruh 45 itemsets,
-# ganti data contoh ini dengan ekspor hasil Colab yang lengkap.
 DATA_FREQUENT = pd.DataFrame({
     "Itemsets": [
         "('100x3x780',)",
@@ -228,10 +177,6 @@ DATA_FREQUENT = pd.DataFrame({
     "Support": [0.035, 0.028, 0.012, 0.010, 0.015]
 })
 
-# Catatan:
-# Tabel ini merupakan ringkasan contoh aturan asosiasi.
-# Jika ingin menampilkan seluruh 20 aturan, gunakan ekspor hasil
-# association_rules dari Google Colab.
 DATA_RULES = pd.DataFrame({
     "Antecedent (If)": [
         "100x3x780",
@@ -294,7 +239,6 @@ if menu == "🏠 Beranda":
 
     st.divider()
 
-    # Metrik utama
     row1_c1, row1_c2 = st.columns(2)
     row1_c1.metric("Total Penjualan", rupiah(total_penjualan))
     row1_c2.metric("Jumlah Transaksi", angka(total_transaksi))
@@ -382,10 +326,6 @@ elif menu == "📈 Analisis Penjualan":
         "📁 Karakteristik Dataset"
     ])
 
-    # -----------------------------------------------------
-    # TAB 1: STATISTIK PENJUALAN
-    # -----------------------------------------------------
-
     with tab_analisis:
 
         st.subheader("Filter Data Interaktif")
@@ -399,7 +339,7 @@ elif menu == "📈 Analisis Penjualan":
             df["CUSTOMER"].dropna().unique().tolist()
         )
         daftar_item = sorted(
-            df["ITEM"].dropna().unique().tolist()
+            df["ITEM"].dropna().astype(str).unique().tolist()
         )
 
         with col1:
@@ -492,10 +432,6 @@ elif menu == "📈 Analisis Penjualan":
                 "Tidak terdapat data produk sesuai kombinasi filter yang dipilih."
             )
 
-    # -----------------------------------------------------
-    # TAB 2: KARAKTERISTIK DATASET
-    # -----------------------------------------------------
-
     with tab_karakteristik:
 
         st.subheader("Ringkasan Karakteristik Dataset")
@@ -513,7 +449,7 @@ elif menu == "📈 Analisis Penjualan":
 
         st.caption(
             "Jumlah jenis produk dihitung dari nilai unik pada kolom ITEM "
-            "setelah pembersihan spasi dan pengeluaran data TOTAL = 0."
+            "setelah pengeluaran data TOTAL = 0 sesuai alur Colab."
         )
 
         st.divider()
@@ -560,52 +496,6 @@ elif menu == "📈 Analisis Penjualan":
             mime="text/csv"
         )
 
-        st.divider()
-
-        with st.expander("Pemeriksaan jumlah item unik"):
-            st.write("Jumlah baris setelah preprocessing:", len(df))
-            st.write(
-                "Jumlah ID transaksi unik:",
-                df["ID TRANSAKSI"].nunique()
-            )
-            st.write(
-                "Jumlah ITEM unik:",
-                df["ITEM"].nunique()
-            )
-            st.write(
-                "Jumlah ID transaksi kosong:",
-                int(df["ID TRANSAKSI"].isna().sum())
-            )
-            st.write(
-                "Jumlah ITEM kosong:",
-                int(df["ITEM"].isna().sum())
-            )
-            st.write(
-                "Jumlah TOTAL = 0:",
-                int((df["TOTAL"] == 0).sum())
-            )
-
-            daftar_item_dashboard = pd.DataFrame({
-                "ITEM": sorted(df["ITEM"].dropna().unique().tolist())
-            })
-
-            st.dataframe(
-                daftar_item_dashboard,
-                use_container_width=True,
-                hide_index=True
-            )
-
-            csv_item = daftar_item_dashboard.to_csv(
-                index=False
-            ).encode("utf-8-sig")
-
-            st.download_button(
-                "Unduh Daftar  Item Unik",
-                data=csv_item,
-                file_name="daftar_item_dashboard.csv",
-                mime="text/csv"
-            )
-
 
 # =========================================================
 # 9. MENU HASIL APRIORI
@@ -620,10 +510,6 @@ elif menu == "🔍 Hasil Apriori":
         "📦 Kandidat Paket",
         "⚙️ Evaluasi Pengujian"
     ])
-
-    # -----------------------------------------------------
-    # TAB 1: PARAMETER DAN POLA
-    # -----------------------------------------------------
 
     with tab_hasil:
 
@@ -647,12 +533,6 @@ elif menu == "🔍 Hasil Apriori":
             hide_index=True
         )
 
-        st.caption(
-            "Tabel di atas merupakan ringkasan itemsets yang ditampilkan. "
-            "Untuk menampilkan seluruh 45 frequent itemsets, gunakan "
-            "file hasil ekspor lengkap dari Google Colab."
-        )
-
         st.divider()
 
         st.subheader("Tabel Aturan Asosiasi (Association Rules)")
@@ -664,12 +544,6 @@ elif menu == "🔍 Hasil Apriori":
             DATA_RULES,
             use_container_width=True,
             hide_index=True
-        )
-
-        st.caption(
-            "Tabel di atas merupakan ringkasan aturan asosiasi yang ditampilkan. "
-            "Untuk menampilkan seluruh 20 aturan, gunakan file hasil ekspor "
-            "lengkap dari Google Colab."
         )
 
         st.divider()
@@ -693,10 +567,6 @@ elif menu == "🔍 Hasil Apriori":
             data transaksi yang dianalisis.
             """
         )
-
-    # -----------------------------------------------------
-    # TAB 2: KANDIDAT PAKET PENJUALAN
-    # -----------------------------------------------------
 
     with tab_kandidat:
 
@@ -729,10 +599,6 @@ elif menu == "🔍 Hasil Apriori":
             "berdasarkan pola pembelian pada data historis, bukan jaminan "
             "peningkatan penjualan."
         )
-
-    # -----------------------------------------------------
-    # TAB 3: EVALUASI PENGUJIAN PARAMETER
-    # -----------------------------------------------------
 
     with tab_pengujian:
 
