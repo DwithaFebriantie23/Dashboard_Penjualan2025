@@ -1,49 +1,128 @@
-from pathlib import Path
+        c_row1_c1.metric("Jumlah Baris Data", angka(len(df)))
+        c_row1_c2.metric("Total Transaksi Unik", angka(df["ID TRANSAKSI"].nunique()))
+        c_row1_c3.metric("Total Jenis Produk", angka(df["ITEM_NORMAL"].nunique()))
 
-source_path = Path("/mnt/data/Teks yang ditempel (1)(20261124-022557).txt")
-source = source_path.read_text(encoding="utf-8")
+        st.divider()
 
-# Preserve the user's original app.py and add a normalized key solely for
-# counting distinct product codes. The original ITEM column remains unchanged.
-old_item_block = '''    # Mempertahankan nama item asli
-    df["ITEM"] = (
-        df["ITEM"].astype(str).str.strip()
-    )
-'''
-new_item_block = '''    # Mempertahankan nama item asli untuk ditampilkan pada dashboard
-    df["ITEM"] = (
-        df["ITEM"].astype(str).str.strip()
-    )
+        st.subheader("Informasi Kolom Dataset")
+        kolom_asli = ["TANGGAL", "CUSTOMER", "ID TRANSAKSI", "ITEM", "QTY", "HARGA", "TOTAL"]
+        informasi = pd.DataFrame({
+            "Nama Kolom": kolom_asli,
+            "Jumlah Data Terisi": [df[kolom].notna().sum() for kolom in kolom_asli],
+            "Tipe Data": [str(df[kolom].dtype) for kolom in kolom_asli]
+        })
+        st.dataframe(informasi, use_container_width=True, hide_index=True)
 
-    # Kunci normalisasi untuk menghitung jenis produk unik.
-    # Normalisasi ini menyamakan huruf besar-kecil dan menghapus spasi,
-    # tanpa mengubah nilai ITEM asli yang digunakan pada tampilan.
-    df["ITEM_NORMAL"] = (
-        df["ITEM"]
-        .str.upper()
-        .str.replace(r"\\\\s+", "", regex=True)
-    )
-'''
-if old_item_block not in source:
-    raise ValueError("Blok pembersihan ITEM tidak ditemukan; file tidak diubah.")
-source = source.replace(old_item_block, new_item_block, 1)
+        st.divider()
 
-old_home_count = '    total_produk = df["ITEM"].nunique()'
-new_home_count = '    total_produk = df["ITEM_NORMAL"].nunique()'
-if old_home_count not in source:
-    raise ValueError("Perhitungan total_produk pada Beranda tidak ditemukan.")
-source = source.replace(old_home_count, new_home_count, 1)
+        st.subheader("Tabel Seluruh Data Transaksi")
+        st.dataframe(
+            df[["TANGGAL", "CUSTOMER", "ID TRANSAKSI", "ITEM", "QTY", "HARGA", "TOTAL"]],
+            use_container_width=True,
+            hide_index=True
+        )
 
-old_dataset_count = '        c_row1_c3.metric("Total Jenis Produk", angka(df["ITEM"].nunique()))'
-new_dataset_count = '        c_row1_c3.metric("Total Jenis Produk", angka(df["ITEM_NORMAL"].nunique()))'
-if old_dataset_count not in source:
-    raise ValueError("Perhitungan Total Jenis Produk pada Karakteristik Dataset tidak ditemukan.")
-source = source.replace(old_dataset_count, new_dataset_count, 1)
+        csv = df[["TANGGAL", "CUSTOMER", "ID TRANSAKSI", "ITEM", "QTY", "HARGA", "TOTAL"]].to_csv(index=False).encode("utf-8-sig")
+        st.download_button(
+            label="📥 Unduh Seluruh Data Penjualan (CSV)",
+            data=csv,
+            file_name="data_penjualan_lengkap.csv",
+            mime="text/csv"
+        )
 
-# Save a runnable Python file.
-output_path = Path("/mnt/data/app.py")
-output_path.write_text(source, encoding="utf-8")
 
-print(f"File berhasil dibuat: {output_path}")
-print(f"Ukuran file: {output_path.stat().st_size:,} byte")
-print("Perubahan: menambahkan ITEM_NORMAL dan menggunakannya untuk dua metrik jumlah jenis produk.")
+# =========================================================
+# 9. MENU 3: HASIL APRIORI (DENGAN TAB)
+# =========================================================
+
+elif menu == "🔍 Hasil Apriori":
+
+    st.title("🔍 Hasil Penelitian Apriori")
+
+    tab_hasil, tab_kandidat, tab_pengujian = st.tabs([
+        "📊 Parameter & Pola", 
+        "📦 Kandidat Paket", 
+        "⚙️ Evaluasi Pengujian"
+    ])
+
+    # ================= TAB 1: PARAMETER & POLA =================
+    with tab_hasil:
+        st.subheader("Parameter Terpilih & Pembentukan Pola")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Min Support", "0,010")
+        col2.metric("Min Confidence", "0,20")
+        col3.metric("Frequent Itemsets", "45")
+        col4.metric("Aturan Asosiasi", "20")
+
+        st.divider()
+
+        st.subheader("Daftar Frequent Itemsets")
+        st.write("Kombinasi produk yang memenuhi nilai minimum support (0,010):")
+        st.dataframe(DATA_FREQUENT, use_container_width=True, hide_index=True)
+
+        st.divider()
+
+        st.subheader("Tabel Aturan Asosiasi (Association Rules)")
+        st.write("Menampilkan informasi anteseden, konsekuen, support, confidence, dan lift ratio:")
+        st.dataframe(DATA_RULES, use_container_width=True, hide_index=True)
+
+        st.divider()
+
+        st.subheader("Rata-rata Nilai Aturan Asosiasi")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Average Support", "0,012129")
+        col2.metric("Average Confidence", "85,54%")
+        col3.metric("Average Lift", "64,262390")
+
+        st.divider()
+
+        st.subheader("Interpretasi Hasil")
+        st.write(
+            """
+            Berdasarkan konfigurasi parameter terpilih, algoritma Apriori menghasilkan 
+            45 frequent itemsets dan 20 aturan asosiasi. Nilai lift seluruh aturan lebih dari 1, 
+            menunjukkan adanya asosiasi positif yang kuat antar produk.
+            """
+        )
+
+    # ================= TAB 2: KANDIDAT PAKET =================
+    with tab_kandidat:
+        st.subheader("5 Kombinasi Kandidat Paket Penjualan")
+        st.dataframe(DATA_KANDIDAT, use_container_width=True, hide_index=True)
+
+        st.divider()
+
+        st.subheader("Visualisasi Jumlah Transaksi per Kandidat")
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.barh(
+            DATA_KANDIDAT["Kandidat Paket"].iloc[::-1],
+            DATA_KANDIDAT["Jumlah Transaksi"].iloc[::-1],
+            color="#2ca02c"
+        )
+        ax.set_xlabel("Jumlah Transaksi")
+        ax.set_ylabel("Kandidat Paket")
+        plt.tight_layout()
+        st.pyplot(fig)
+        plt.close(fig)
+
+    # ================= TAB 3: EVALUASI PENGUJIAN =================
+    with tab_pengujian:
+        st.subheader("Perbandingan Pengujian Parameter")
+        st.dataframe(DATA_PENGUJIAN, use_container_width=True, hide_index=True)
+
+        st.divider()
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Frequent Itemsets**")
+            fig, ax = plt.subplots(figsize=(5, 3.5))
+            ax.bar(DATA_PENGUJIAN["Pengujian"], DATA_PENGUJIAN["Frequent Itemsets"], color="orange")
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            st.pyplot(fig)
+            plt.close(fig)
+
+        with col2:
+            st.write("**Aturan Asosiasi**")
+            fig, ax = plt.subplots(figsize=(5, 3.5))
